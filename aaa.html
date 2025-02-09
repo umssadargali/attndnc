@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Attendance System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #ff9966, #ff5e62);
+            text-align: center;
+            color: white;
+            padding: 20px;
+        }
+        .container {
+            max-width: 400px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            color: black;
+        }
+        select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: none;
+            font-size: 16px;
+        }
+        button {
+            background: #ff5e62;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #ff9966;
+        }
+        #clock {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        video, canvas, img {
+            width: 100%;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+        footer {
+            margin-top: 20px;
+            font-size: 12px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <h2>Online Students Attendance</h2>
+    <div class="container">
+        <div id="clock"></div>
+
+        <label>Select Student:</label>
+        <select id="student">
+            <option value="">-- Select Student --</option>
+            <option value="Alice Johnson">Alice Johnson</option>
+            <option value="Bob Smith">Bob Smith</option>
+            <option value="Charlie Brown">Charlie Brown</option>
+        </select>
+
+        <video id="video" autoplay></video>
+        <button onclick="capturePhoto()">Capture Photo</button>
+        <canvas id="canvas" style="display: none;"></canvas>
+        <img id="photoPreview" style="display: none;">
+
+        <p><strong>Location:</strong> <span id="location">Fetching...</span></p>
+
+        <button onclick="checkIn()">Check In</button>
+        <button onclick="checkOut()">Check Out</button>
+    </div>
+
+    <footer>
+        &copy; 2025 Student Attendance System. All Rights Reserved.
+    </footer>
+
+    <script>
+        // Live Digital Clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').innerHTML = now.toLocaleTimeString();
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Initialize Camera
+        const video = document.getElementById('video');
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => video.srcObject = stream)
+            .catch(err => console.error("Camera error: ", err));
+
+        let photoData = "";
+
+        // Capture Photo
+        function capturePhoto() {
+            const canvas = document.getElementById('canvas');
+            const photoPreview = document.getElementById('photoPreview');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            photoData = canvas.toDataURL('image/png');
+            photoPreview.src = photoData;
+            photoPreview.style.display = "block";
+        }
+
+        // Get Location
+        let userLocation = "";
+        function fetchLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    userLocation = `Lat: ${position.coords.latitude}, Lng: ${position.coords.longitude}`;
+                    document.getElementById("location").innerText = userLocation;
+                });
+            } else {
+                userLocation = "Location not available";
+            }
+        }
+        fetchLocation();
+
+        // Check-in & Check-out System
+        function checkIn() {
+            processAttendance("Check-In");
+        }
+
+        function checkOut() {
+            processAttendance("Check-Out");
+        }
+
+        function processAttendance(type) {
+            const studentName = document.getElementById("student").value;
+            if (!studentName) {
+                alert("Please select a student!");
+                return;
+            }
+            if (!photoData) {
+                alert("Please capture a photo!");
+                return;
+            }
+
+            const time = new Date().toLocaleString();
+            const location = userLocation;
+
+            // Send Data to Google Sheets & Drive
+            fetch("https://script.google.com/macros/s/AKfycbx-fSu8ApPbECAL7g6h-iRwtYe6EznDBX5gL7DBZvZmPJLOWfeLngTq-qL4HT0NHZTM/exec", {
+                method: "POST",
+                body: JSON.stringify({
+                    studentName: studentName,
+                    time: time,
+                    location: location,
+                    photoData: photoData,
+                    type: type
+                })
+            })
+            .then(response => response.text())
+            .then(data => alert(data))
+            .catch(error => console.error("Error:", error));
+        }
+    </script>
+</body>
+</html>
